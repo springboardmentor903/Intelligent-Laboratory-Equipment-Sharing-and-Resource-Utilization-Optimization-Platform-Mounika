@@ -1,0 +1,14 @@
+{
+  "name": "lab-resource-utilization-platform",
+  "version": "1.0.0",
+  "description": "Full-Stack Laboratory Equipment Sharing & Resource Utilization Optimization Platform",
+  "private": true,
+  "scripts": {
+    "dev": "npm run start:frontend",
+    "start": "npm run start:frontend",
+    "start:frontend": "cd frontend && npm run dev",
+    "start:backend": "cd backend && .\\mvnw.cmd spring-boot:run",
+    "build:frontend": "cd frontend && npm run build",
+    "test:backend": "cd backend && .\\mvnw.cmd test"
+  }
+}
