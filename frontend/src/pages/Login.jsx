@@ -142,9 +142,9 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowGoogleModal(true)}
-                className="w-full flex justify-center items-center px-4 py-2 border border-slate-300 rounded-lg shadow-sm bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-slate-300 rounded-lg shadow-2xs bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
               >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -162,7 +162,7 @@ export default function Login() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                Continue with Google
+                Sign in with Google
               </button>
             </div>
           </div>
@@ -171,48 +171,48 @@ export default function Login() {
 
       {/* Dynamic Google Login Modal */}
       {showGoogleModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-200">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Google Authentication</h3>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Simulate Google OAuth2</h3>
             <p className="text-xs text-slate-500 mb-4">
-              Enter your Google account email to sign in via Google OAuth2.
+              Enter your Google Account email and name to simulate third-party single sign-on.
             </p>
             <form onSubmit={handleGoogleSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-700">Google Email *</label>
+                <label className="block text-xs font-semibold text-slate-700">Google Email</label>
                 <input
                   type="email"
                   required
                   value={googleEmail}
                   onChange={(e) => setGoogleEmail(e.target.value)}
                   placeholder="user@gmail.com"
-                  className="mt-1 w-full p-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                  className="mt-1 w-full p-2 border border-slate-300 rounded-lg text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700">Your Full Name</label>
+                <label className="block text-xs font-semibold text-slate-700">Display Name</label>
                 <input
                   type="text"
                   value={googleName}
                   onChange={(e) => setGoogleName(e.target.value)}
-                  placeholder="Optional display name"
-                  className="mt-1 w-full p-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                  placeholder="John Doe"
+                  className="mt-1 w-full p-2 border border-slate-300 rounded-lg text-sm"
                 />
               </div>
-              <div className="flex justify-end space-x-2 pt-3">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowGoogleModal(false)}
-                  className="px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs"
+                  className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-3 py-1.5 bg-teal-700 text-white rounded-lg text-xs font-semibold hover:bg-teal-800"
+                  className="px-3 py-1.5 bg-teal-700 text-white rounded-lg text-xs font-semibold"
                 >
-                  {loading ? 'Authenticating...' : 'Sign In with Google'}
+                  Confirm &amp; Sign In
                 </button>
               </div>
             </form>

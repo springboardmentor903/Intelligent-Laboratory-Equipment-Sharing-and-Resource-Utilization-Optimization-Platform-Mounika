@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -45,4 +46,47 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("departmentId") Long departmentId,
             @Param("status") BookingStatus status
     );
+
+    @Query("SELECT b FROM Booking b WHERE b.equipment.institution.id = :institutionId " +
+           "AND b.status = :status ORDER BY b.createdAt DESC")
+    List<Booking> findByInstitutionAndStatus(
+            @Param("institutionId") Long institutionId,
+            @Param("status") BookingStatus status
+    );
+
+    List<Booking> findByStatusAndStartTimeBefore(BookingStatus status, LocalDateTime threshold);
+
+    List<Booking> findByStatusAndEndTimeBefore(BookingStatus status, LocalDateTime threshold);
+
+    Optional<Booking> findFirstByEquipmentIdAndStatusInAndStartTimeAfterOrderByStartTimeAsc(
+            Long equipmentId,
+            Collection<BookingStatus> statuses,
+            LocalDateTime now
+    );
+
+    @Query("SELECT b FROM Booking b WHERE b.equipment.id = :equipmentId " +
+           "AND b.status IN :statuses " +
+           "AND b.startTime < :end AND b.endTime > :start " +
+           "ORDER BY b.startTime ASC")
+    List<Booking> findOverlappingBookingsForEquipment(
+            @Param("equipmentId") Long equipmentId,
+            @Param("statuses") Collection<BookingStatus> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("SELECT b FROM Booking b WHERE b.equipment.id IN :equipmentIds " +
+           "AND b.status IN :statuses " +
+           "AND b.startTime < :end AND b.endTime > :start " +
+           "ORDER BY b.startTime ASC")
+    List<Booking> findOverlappingBookingsForEquipmentIds(
+            @Param("equipmentIds") Collection<Long> equipmentIds,
+            @Param("statuses") Collection<BookingStatus> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    List<Booking> findByRecurrenceIdOrderByStartTimeAsc(String recurrenceId);
+
+    List<Booking> findByRecurrenceIdAndStatusIn(String recurrenceId, Collection<BookingStatus> statuses);
 }

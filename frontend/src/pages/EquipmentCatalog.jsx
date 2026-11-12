@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import { EquipmentStatusBadge } from '../components/common/StatusBadge';
+import { canManageEquipment } from '../utils/roleHelper';
 import { Search, Filter, Plus, Beaker, MapPin, DollarSign, Share2, Layers, AlertCircle, X } from 'lucide-react';
 
 export default function EquipmentCatalog() {
@@ -46,13 +47,7 @@ export default function EquipmentCatalog() {
   const [showQuickDept, setShowQuickDept] = useState(false);
   const [quickDeptName, setQuickDeptName] = useState('');
 
-  const canAddEquipment = user && [
-    'ROLE_LAB_MANAGER',
-    'ROLE_LAB_TECHNICIAN',
-    'ROLE_DEPARTMENT_HEAD',
-    'ROLE_INSTITUTION_ADMIN',
-    'ROLE_SYSTEM_ADMIN',
-  ].includes(user.role);
+  const canAddEquipment = canManageEquipment(user);
 
   const fetchEquipment = () => {
     setLoading(true);
@@ -278,14 +273,32 @@ export default function EquipmentCatalog() {
           {error}
         </div>
       ) : equipmentList.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
+        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 p-6">
           <Beaker className="w-12 h-12 text-slate-400 mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-slate-800">No laboratory equipment in catalog</h3>
           <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
             {canAddEquipment
-              ? 'Click "Register Equipment" above to add your first piece of laboratory equipment.'
-              : 'Log in as a Lab Manager or Administrator to register laboratory equipment.'}
+              ? 'Click below to register your first piece of laboratory instrumentation.'
+              : 'Log in as a System Admin, Institution Admin, or Lab Manager to register laboratory equipment.'}
           </p>
+          <div className="mt-5">
+            {canAddEquipment ? (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold rounded-xl shadow-sm transition"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Register Equipment Now
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                className="inline-flex items-center px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold rounded-xl shadow-sm transition"
+              >
+                Log In to Register Equipment
+              </Link>
+            )}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

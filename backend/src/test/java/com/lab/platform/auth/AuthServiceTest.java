@@ -1,6 +1,8 @@
 package com.lab.platform.auth;
 
+import com.lab.platform.booking.BookingRepository;
 import com.lab.platform.common.BadRequestException;
+import com.lab.platform.common.ConflictException;
 import com.lab.platform.institution.DepartmentRepository;
 import com.lab.platform.institution.InstitutionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +33,9 @@ class AuthServiceTest {
     private DepartmentRepository departmentRepository;
 
     @Mock
+    private BookingRepository bookingRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -50,29 +55,9 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("First user registered on an empty database is granted ROLE_SYSTEM_ADMIN")
-    void testRegister_FirstUser_SystemAdmin() {
+    @DisplayName("Public registration strictly assigns RESEARCHER_STUDENT role")
+    void testRegister_PublicRegistration_RoleResearcherStudent() {
         when(userRepository.existsByEmail("alice@test.edu")).thenReturn(false);
-        when(userRepository.count()).thenReturn(0L);
-        when(passwordEncoder.encode("SecretPass123")).thenReturn("hashedPasswordXYZ");
-        when(jwtUtils.generateToken(any(User.class))).thenReturn("mockJwtToken");
-        when(userRepository.save(any(User.class))).thenAnswer(i -> {
-            User u = i.getArgument(0);
-            u.setId(1L);
-            return u;
-        });
-
-        AuthResponse response = authService.register(registerRequest);
-
-        assertNotNull(response);
-        assertEquals(Role.ROLE_SYSTEM_ADMIN, response.getRole());
-    }
-
-    @Test
-    @DisplayName("Public registration for subsequent users must strictly assign ROLE_RESEARCHER")
-    void testRegister_SubsequentUsers_RoleResearcher() {
-        when(userRepository.existsByEmail("alice@test.edu")).thenReturn(false);
-        when(userRepository.count()).thenReturn(1L); // Not first user
         when(passwordEncoder.encode("SecretPass123")).thenReturn("hashedPasswordXYZ");
         when(jwtUtils.generateToken(any(User.class))).thenReturn("mockJwtToken");
 
@@ -86,7 +71,7 @@ class AuthServiceTest {
 
         assertNotNull(response);
         assertEquals("mockJwtToken", response.getToken());
-        assertEquals(Role.ROLE_RESEARCHER, response.getRole());
+        assertEquals(Role.RESEARCHER_STUDENT, response.getRole());
         assertEquals("alice@test.edu", response.getEmail());
 
         verify(passwordEncoder, times(1)).encode("SecretPass123");
@@ -94,11 +79,23 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Registration should fail when email already exists")
+    @DisplayName("Attempting to register as SYSTEM_ADMIN via API is rejected")
+    void testRegister_SystemAdminAttempt_Rejected() {
+        registerRequest.setRole(Role.SYSTEM_ADMIN);
+
+        assertThrows(BadRequestException.class, () -> {
+            authService.register(registerRequest);
+        });
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Registration should fail with 409 Conflict when email already exists")
     void testRegister_DuplicateEmail() {
         when(userRepository.existsByEmail("alice@test.edu")).thenReturn(true);
 
-        assertThrows(BadRequestException.class, () -> {
+        assertThrows(ConflictException.class, () -> {
             authService.register(registerRequest);
         });
 
@@ -113,7 +110,7 @@ class AuthServiceTest {
         user.setEmail("alice@test.edu");
         user.setPasswordHash("hashedPass");
         user.setFullName("Alice Student");
-        user.setRole(Role.ROLE_RESEARCHER);
+        user.setRole(Role.RESEARCHER_STUDENT);
         user.setActive(true);
 
         when(userRepository.findByEmail("alice@test.edu")).thenReturn(Optional.of(user));
@@ -125,7 +122,7 @@ class AuthServiceTest {
 
         assertNotNull(response);
         assertEquals("validToken123", response.getToken());
-        assertEquals(Role.ROLE_RESEARCHER, response.getRole());
+        assertEquals(Role.RESEARCHER_STUDENT, response.getRole());
     }
 
     @Test

@@ -73,6 +73,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/institutions/**").permitAll()
                 // Public equipment catalog reading
                 .requestMatchers(HttpMethod.GET, "/api/equipment/**").permitAll()
+                // Real-time WebSocket connection handshake endpoints
+                .requestMatchers("/ws-lab/**", "/ws-lab-direct/**").permitAll()
                 // Local development H2 console
                 .requestMatchers("/h2-console/**").permitAll()
                 // All other endpoints require valid JWT authentication

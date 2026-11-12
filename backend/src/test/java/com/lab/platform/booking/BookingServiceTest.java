@@ -35,6 +35,9 @@ class BookingServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private com.lab.platform.sharing.SharingService sharingService;
+
     @InjectMocks
     private BookingService bookingService;
 
@@ -49,7 +52,7 @@ class BookingServiceTest {
         researcher.setId(10L);
         researcher.setEmail("researcher@lab.edu");
         researcher.setFullName("Dr. Elena Rostova");
-        researcher.setRole(Role.ROLE_RESEARCHER);
+        researcher.setRole(Role.RESEARCHER_STUDENT);
 
         equipment = new Equipment();
         equipment.setId(100L);
@@ -136,7 +139,7 @@ class BookingServiceTest {
         User manager = new User();
         manager.setId(2L);
         manager.setEmail("manager@lab.edu");
-        manager.setRole(Role.ROLE_LAB_MANAGER);
+        manager.setRole(Role.LAB_MANAGER);
 
         Booking booking = new Booking();
         booking.setId(300L);

@@ -1,5 +1,7 @@
 package com.lab.platform.equipment;
 
+import com.lab.platform.common.BadRequestException;
+import com.lab.platform.common.ConflictException;
 import com.lab.platform.common.ResourceNotFoundException;
 import com.lab.platform.institution.Department;
 import com.lab.platform.institution.DepartmentRepository;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,11 +54,21 @@ public class EquipmentService {
         Department department = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()));
 
+        String assetTag = (request.getAssetTag() != null && !request.getAssetTag().trim().isEmpty())
+                ? request.getAssetTag().trim().toUpperCase()
+                : "EQ-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        if (equipmentRepository.existsByAssetTag(assetTag)) {
+            throw new ConflictException("An equipment with asset tag '" + assetTag + "' already exists.");
+        }
+
         Equipment equipment = new Equipment();
+        equipment.setAssetTag(assetTag);
         copyProperties(request, equipment, institution, department);
 
         Equipment saved = equipmentRepository.save(equipment);
-        logger.info("Equipment registered: {} (ID: {}) for Department: {}", saved.getName(), saved.getId(), department.getName());
+        logger.info("Equipment registered: {} (Tag: {}, ID: {}) for Department: {}",
+                saved.getName(), saved.getAssetTag(), saved.getId(), department.getName());
         return saved;
     }
 
@@ -69,6 +82,18 @@ public class EquipmentService {
         Department department = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()));
 
+        if (request.getAssetTag() != null && !request.getAssetTag().trim().isEmpty()) {
+            String tag = request.getAssetTag().trim().toUpperCase();
+            if (equipmentRepository.existsByAssetTagAndIdNot(tag, id)) {
+                throw new ConflictException("An equipment with asset tag '" + tag + "' already exists.");
+            }
+            equipment.setAssetTag(tag);
+        }
+
+        if (request.getStatus() != null && request.getStatus() != equipment.getStatus()) {
+            validateStatusTransition(equipment.getStatus(), request.getStatus(), false);
+        }
+
         copyProperties(request, equipment, institution, department);
 
         Equipment updated = equipmentRepository.save(equipment);
@@ -78,18 +103,57 @@ public class EquipmentService {
 
     @Transactional
     public Equipment updateStatus(Long id, EquipmentStatus newStatus) {
+        return updateEquipmentStatusInternal(id, newStatus, false);
+    }
+
+    /**
+     * Internal status transition helper used by both managers and the automated booking engine.
+     */
+    @Transactional
+    public Equipment updateEquipmentStatusInternal(Long id, EquipmentStatus newStatus, boolean isBookingSystemAction) {
         Equipment equipment = getById(id);
         EquipmentStatus oldStatus = equipment.getStatus();
+
+        if (oldStatus == newStatus) {
+            return equipment;
+        }
+
+        validateStatusTransition(oldStatus, newStatus, isBookingSystemAction);
+
         equipment.setStatus(newStatus);
         Equipment updated = equipmentRepository.save(equipment);
         logger.info("Equipment status changed: {} (ID: {}) from {} to {}", updated.getName(), id, oldStatus, newStatus);
         return updated;
     }
 
+    /**
+     * Strict lifecycle status transitions per project specifications:
+     * - AVAILABLE <-> UNDER_MAINTENANCE <-> OUT_OF_SERVICE can be changed by managers.
+     * - RETIRED can be set from any status, but can NEVER be changed afterwards.
+     * - BOOKED is reserved exclusively for the booking engine (check-in/reservations).
+     */
+    private void validateStatusTransition(EquipmentStatus currentStatus, EquipmentStatus newStatus, boolean isBookingSystemAction) {
+        if (currentStatus == EquipmentStatus.RETIRED) {
+            throw new BadRequestException("Equipment is permanently retired. Its status cannot be changed.");
+        }
+
+        if (newStatus == EquipmentStatus.RETIRED) {
+            return; // Permitted from any status
+        }
+
+        if (newStatus == EquipmentStatus.BOOKED && !isBookingSystemAction) {
+            throw new BadRequestException("Status 'Booked' is reserved for active reservations and can only be set by the booking system.");
+        }
+
+        if (currentStatus == EquipmentStatus.BOOKED && !isBookingSystemAction) {
+            throw new BadRequestException("Equipment is currently reserved or in use. Status cannot be modified manually while booked.");
+        }
+    }
+
     @Transactional
     public void deleteEquipment(Long id) {
         Equipment equipment = getById(id);
-        // Soft-delete or retire
+        // Equipment with booking or maintenance history is never deleted. It is marked Retired.
         equipment.setStatus(EquipmentStatus.RETIRED);
         equipmentRepository.save(equipment);
         logger.info("Equipment marked as RETIRED: {} (ID: {})", equipment.getName(), id);
@@ -109,6 +173,7 @@ public class EquipmentService {
 
     private void copyProperties(EquipmentRequest src, Equipment dest, Institution institution, Department department) {
         dest.setName(src.getName());
+        dest.setManufacturer(src.getManufacturer());
         dest.setModelNumber(src.getModelNumber());
         dest.setSerialNumber(src.getSerialNumber());
         dest.setCategory(src.getCategory());
@@ -122,6 +187,10 @@ public class EquipmentService {
         if (src.getHourlyRate() != null) {
             dest.setHourlyRate(src.getHourlyRate());
         }
+        dest.setPurchaseDate(src.getPurchaseDate());
+        dest.setPurchaseCost(src.getPurchaseCost());
+        dest.setRequiresApproval(src.isRequiresApproval());
+        dest.setRequiresTraining(src.isRequiresTraining());
         dest.setSharableInterInstitution(src.isSharableInterInstitution());
         dest.setDocumentationUrl(src.getDocumentationUrl());
         dest.setImageUrl(src.getImageUrl());

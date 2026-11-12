@@ -130,7 +130,7 @@ export default function Register() {
           )}
 
           <div className="mb-6 p-3 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800">
-            <strong>System Setup:</strong> The initial registered user is granted <strong>System Administrator</strong> privileges to configure facilities and equipment. Subsequent accounts are registered as <strong>Researchers</strong>.
+            <strong>Student &amp; Researcher Registration:</strong> New accounts are automatically registered as <strong>Researcher / Student</strong> with full equipment booking, recurring reservation, and waitlist privileges.
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>

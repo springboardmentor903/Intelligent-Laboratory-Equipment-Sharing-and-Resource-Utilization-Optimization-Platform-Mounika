@@ -6,12 +6,21 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
 
+    boolean existsByAssetTag(String assetTag);
+
+    boolean existsByAssetTagAndIdNot(String assetTag, Long id);
+
+    Optional<Equipment> findByAssetTag(String assetTag);
+
     @Query("SELECT e FROM Equipment e WHERE " +
            "(:keyword IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "  OR LOWER(e.assetTag) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "  OR LOWER(e.manufacturer) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "  OR LOWER(e.modelNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "  OR LOWER(e.category) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "  OR LOWER(e.tags) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
@@ -35,4 +44,6 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
     List<Equipment> findByInstitutionId(Long institutionId);
 
     List<Equipment> findByDepartmentId(Long departmentId);
+
+    List<Equipment> findByCategoryAndStatus(String category, EquipmentStatus status);
 }

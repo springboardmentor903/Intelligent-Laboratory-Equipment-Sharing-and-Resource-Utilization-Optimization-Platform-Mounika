@@ -3,6 +3,7 @@ package com.lab.platform.auth;
 import com.lab.platform.common.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,12 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         AuthResponse response = authService.register(request);
         return ResponseEntity.ok(ApiResponse.ok("Registration successful", response));
+    }
+
+    @PostMapping("/register-department-head")
+    public ResponseEntity<ApiResponse<String>> registerDepartmentHead(@Valid @RequestBody DepartmentHeadRegisterRequest request) {
+        String msg = authService.registerDepartmentHead(request);
+        return ResponseEntity.ok(ApiResponse.ok(msg, msg));
     }
 
     @PostMapping("/login")
@@ -64,6 +71,27 @@ public class AuthController {
             @Valid @RequestBody UpdateProfileRequest request) {
         UserProfileResponse updated = authService.updateProfile(userDetails.getUsername(), request);
         return ResponseEntity.ok(ApiResponse.ok("Profile updated successfully", updated));
+    }
+
+    @PutMapping("/users/{userId}/role")
+    @PreAuthorize("hasAnyRole('INSTITUTION_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<String>> updateUserRole(
+            @PathVariable Long userId,
+            @RequestParam(required = false) Role role,
+            @RequestParam(required = false) Long institutionId,
+            @RequestParam(required = false) Long departmentId,
+            @AuthenticationPrincipal UserPrincipal caller) {
+        authService.updateUserRoleAndDepartment(userId, role, institutionId, departmentId, caller);
+        return ResponseEntity.ok(ApiResponse.ok("User role and department updated successfully."));
+    }
+
+    @PutMapping("/users/{userId}/deactivate")
+    @PreAuthorize("hasAnyRole('INSTITUTION_ADMIN', 'SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<String>> deactivateUser(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserPrincipal caller) {
+        authService.deactivateUser(userId, caller);
+        return ResponseEntity.ok(ApiResponse.ok("User deactivated successfully. Future bookings cancelled."));
     }
 
     @GetMapping("/roles")

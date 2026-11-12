@@ -5,7 +5,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
 public class UserPrincipal implements UserDetails {
 
@@ -22,7 +22,10 @@ public class UserPrincipal implements UserDetails {
         this.password = user.getPasswordHash();
         this.role = user.getRole();
         this.active = user.isActive();
-        this.authorities = Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()));
+        this.authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_" + user.getRole().name()),
+                new SimpleGrantedAuthority(user.getRole().name())
+        );
     }
 
     public Long getId() {

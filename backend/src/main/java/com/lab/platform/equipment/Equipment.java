@@ -1,6 +1,7 @@
 package com.lab.platform.equipment;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lab.platform.institution.Department;
 import com.lab.platform.institution.Institution;
 import jakarta.persistence.*;
@@ -18,6 +19,11 @@ public class Equipment {
 
     @Column(nullable = false)
     private String name;
+
+    @Column(unique = true, nullable = false, length = 100)
+    private String assetTag;
+
+    private String manufacturer;
 
     private String modelNumber;
 
@@ -42,6 +48,17 @@ public class Equipment {
 
     @Column(precision = 10, scale = 2)
     private BigDecimal hourlyRate = BigDecimal.ZERO;
+
+    private LocalDate purchaseDate;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal purchaseCost;
+
+    @Column(nullable = false)
+    private boolean requiresApproval = true;
+
+    @Column(nullable = false)
+    private boolean requiresTraining = false;
 
     @Column(nullable = false)
     private boolean sharableInterInstitution = false;
@@ -70,6 +87,19 @@ public class Equipment {
 
     public Equipment() {}
 
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+        if (this.assetTag == null || this.assetTag.trim().isEmpty()) {
+            this.assetTag = "EQ-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        }
+    }
+
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
@@ -89,6 +119,22 @@ public class Equipment {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getAssetTag() {
+        return assetTag;
+    }
+
+    public void setAssetTag(String assetTag) {
+        this.assetTag = assetTag;
+    }
+
+    public String getManufacturer() {
+        return manufacturer;
+    }
+
+    public void setManufacturer(String manufacturer) {
+        this.manufacturer = manufacturer;
     }
 
     public String getModelNumber() {
@@ -163,6 +209,38 @@ public class Equipment {
         this.hourlyRate = hourlyRate;
     }
 
+    public LocalDate getPurchaseDate() {
+        return purchaseDate;
+    }
+
+    public void setPurchaseDate(LocalDate purchaseDate) {
+        this.purchaseDate = purchaseDate;
+    }
+
+    public BigDecimal getPurchaseCost() {
+        return purchaseCost;
+    }
+
+    public void setPurchaseCost(BigDecimal purchaseCost) {
+        this.purchaseCost = purchaseCost;
+    }
+
+    public boolean isRequiresApproval() {
+        return requiresApproval;
+    }
+
+    public void setRequiresApproval(boolean requiresApproval) {
+        this.requiresApproval = requiresApproval;
+    }
+
+    public boolean isRequiresTraining() {
+        return requiresTraining;
+    }
+
+    public void setRequiresTraining(boolean requiresTraining) {
+        this.requiresTraining = requiresTraining;
+    }
+
     public boolean isSharableInterInstitution() {
         return sharableInterInstitution;
     }
@@ -233,5 +311,24 @@ public class Equipment {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    /**
+     * Calculated calibration state (valid, due soon, expired) per Section 1.3/1.4.
+     * Calculated dynamically from next due date and today's date; never stored in the database.
+     */
+    @JsonProperty("calibrationStatus")
+    public String getCalibrationStatus() {
+        if (nextCalibrationDue == null) {
+            return "UNKNOWN";
+        }
+        LocalDate today = LocalDate.now();
+        if (nextCalibrationDue.isBefore(today)) {
+            return "EXPIRED";
+        } else if (nextCalibrationDue.isBefore(today.plusDays(30))) {
+            return "DUE_SOON";
+        } else {
+            return "VALID";
+        }
     }
 }

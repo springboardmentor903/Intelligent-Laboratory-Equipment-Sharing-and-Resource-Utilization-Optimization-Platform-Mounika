@@ -1,7 +1,12 @@
 package com.lab.platform.auth;
 
+import com.lab.platform.booking.Booking;
+import com.lab.platform.booking.BookingRepository;
+import com.lab.platform.booking.BookingStatus;
 import com.lab.platform.common.BadRequestException;
+import com.lab.platform.common.ConflictException;
 import com.lab.platform.common.ResourceNotFoundException;
+import com.lab.platform.common.UnauthorizedException;
 import com.lab.platform.institution.Department;
 import com.lab.platform.institution.DepartmentRepository;
 import com.lab.platform.institution.Institution;
@@ -13,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -23,25 +29,34 @@ public class AuthService {
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
     private final DepartmentRepository departmentRepository;
+    private final BookingRepository bookingRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 
     public AuthService(UserRepository userRepository,
                        InstitutionRepository institutionRepository,
                        DepartmentRepository departmentRepository,
+                       BookingRepository bookingRepository,
                        PasswordEncoder passwordEncoder,
                        JwtUtils jwtUtils) {
         this.userRepository = userRepository;
         this.institutionRepository = institutionRepository;
         this.departmentRepository = departmentRepository;
+        this.bookingRepository = bookingRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("An account with this email address already exists.");
+        String email = request.getEmail().toLowerCase().trim();
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("An account with this email address already exists.");
+        }
+
+        // Strict Requirement: Nobody must be able to register as a System Administrator.
+        if (request.getRole() == Role.SYSTEM_ADMIN) {
+            throw new BadRequestException("System Administrator accounts cannot be created via public registration.");
         }
 
         Institution institution = null;
@@ -54,15 +69,17 @@ public class AuthService {
             department = departmentRepository.findById(request.getDepartmentId()).orElse(null);
         }
 
-        // DYNAMIC SETUP LOGIC:
-        // When the database has no registered accounts, the first user is granted ROLE_SYSTEM_ADMIN
-        // so they can configure institutions, departments, and manage lab resources.
-        // All subsequent public self-registrations are strictly restricted to ROLE_RESEARCHER.
-        long totalUsers = userRepository.count();
-        Role assignedRole = (totalUsers == 0) ? Role.ROLE_SYSTEM_ADMIN : Role.ROLE_RESEARCHER;
+        // Default public registration role is RESEARCHER_STUDENT
+        Role assignedRole = (request.getRole() != null) ? request.getRole() : Role.RESEARCHER_STUDENT;
+
+        // If someone attempts Department Head registration through normal endpoint,
+        // redirect them to the Department Head registration workflow
+        if (assignedRole == Role.DEPARTMENT_HEAD) {
+            throw new BadRequestException("Department Head registration must include department details via /api/auth/register-department-head.");
+        }
 
         User user = new User();
-        user.setEmail(request.getEmail().toLowerCase().trim());
+        user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setFullName(request.getFullName().trim());
         user.setPhoneNumber(request.getPhoneNumber());
@@ -88,13 +105,46 @@ public class AuthService {
         );
     }
 
+    @Transactional
+    public String registerDepartmentHead(DepartmentHeadRegisterRequest request) {
+        String email = request.getEmail().toLowerCase().trim();
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("An account with this email address already exists.");
+        }
+
+        Institution institution = institutionRepository.findById(request.getInstitutionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Institution not found with id: " + request.getInstitutionId()));
+
+        // Department Head registration creates an inactive Department and an inactive User
+        Department department = new Department();
+        department.setName(request.getDepartmentName().trim());
+        department.setCode(request.getDepartmentCode().trim().toUpperCase());
+        department.setInstitution(institution);
+        department.setActive(false);
+        Department savedDept = departmentRepository.save(department);
+
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setFullName(request.getFullName().trim());
+        user.setPhoneNumber(request.getPhoneNumber());
+        user.setRole(Role.DEPARTMENT_HEAD);
+        user.setInstitution(institution);
+        user.setDepartment(savedDept);
+        user.setActive(false); // Awaits Institution Administrator approval
+        userRepository.save(user);
+
+        logger.info("Department Head registration submitted for {} (Dept: {}). Awaiting approval.", email, savedDept.getName());
+        return "Department Head registration submitted successfully. Your account and department are awaiting approval by your Institution Administrator.";
+    }
+
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail().toLowerCase().trim())
                 .orElseThrow(() -> new BadRequestException("Invalid email or password."));
 
         if (!user.isActive()) {
-            throw new BadRequestException("This account has been deactivated. Please contact your administrator.");
+            throw new BadRequestException("This account is currently inactive or awaiting administrative approval. Please contact your Institution Administrator.");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
@@ -124,20 +174,19 @@ public class AuthService {
         User user = userRepository.findByEmail(email).orElse(null);
 
         if (user == null) {
-            // Auto-provision dynamically if user does not exist
-            long totalUsers = userRepository.count();
-            Role assignedRole = (totalUsers == 0) ? Role.ROLE_SYSTEM_ADMIN : Role.ROLE_RESEARCHER;
-
             user = new User();
             user.setEmail(email);
             user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
             user.setFullName(request.getName());
             user.setAvatarUrl(request.getAvatarUrl());
-            user.setRole(assignedRole);
+            user.setRole(Role.RESEARCHER_STUDENT);
             user.setActive(true);
             user = userRepository.save(user);
-            logger.info("[AUTH - GOOGLE OAUTH2] Dynamically provisioned account for: {} with role: {}", email, assignedRole);
+            logger.info("[AUTH - GOOGLE OAUTH2] Dynamically provisioned account for: {} with role: {}", email, Role.RESEARCHER_STUDENT);
         } else {
+            if (!user.isActive()) {
+                throw new BadRequestException("This account is currently inactive or awaiting administrative approval.");
+            }
             if (request.getAvatarUrl() != null && user.getAvatarUrl() == null) {
                 user.setAvatarUrl(request.getAvatarUrl());
                 userRepository.save(user);
@@ -210,5 +259,100 @@ public class AuthService {
 
         User updated = userRepository.save(user);
         return new UserProfileResponse(updated);
+    }
+
+    @Transactional
+    public void updateUserRoleAndDepartment(Long targetUserId, Role newRole, Long institutionId, Long departmentId, UserPrincipal caller) {
+        User target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Target user not found with id: " + targetUserId));
+
+        // System Administrator can assign any role and change institution/department
+        // Institution Administrator can only manage users within their own institution
+        if (caller.getRole() == Role.SYSTEM_ADMIN) {
+            // Check: Last active System Admin cannot be demoted
+            if (target.getRole() == Role.SYSTEM_ADMIN && newRole != Role.SYSTEM_ADMIN) {
+                if (userRepository.countByRoleAndActiveTrue(Role.SYSTEM_ADMIN) <= 1) {
+                    throw new BadRequestException("The last active System Administrator cannot be demoted.");
+                }
+            }
+        } else if (caller.getRole() == Role.INSTITUTION_ADMIN) {
+            User callerUser = userRepository.findById(caller.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Caller user not found"));
+
+            if (callerUser.getInstitution() == null || target.getInstitution() == null ||
+                    !callerUser.getInstitution().getId().equals(target.getInstitution().getId())) {
+                throw new UnauthorizedException("Institution Administrators can only manage users within their own institution.");
+            }
+
+            // Institution Admin cannot assign INSTITUTION_ADMIN or SYSTEM_ADMIN
+            if (newRole == Role.SYSTEM_ADMIN || newRole == Role.INSTITUTION_ADMIN) {
+                throw new UnauthorizedException("Institution Administrators cannot assign Administrator roles.");
+            }
+
+            if (target.getRole() == Role.SYSTEM_ADMIN || target.getRole() == Role.INSTITUTION_ADMIN) {
+                throw new UnauthorizedException("Institution Administrators cannot modify Administrator accounts.");
+            }
+        } else {
+            throw new UnauthorizedException("You do not have permission to modify user roles.");
+        }
+
+        if (newRole != null) {
+            target.setRole(newRole);
+        }
+
+        if (institutionId != null) {
+            Institution inst = institutionRepository.findById(institutionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Institution not found with id: " + institutionId));
+            target.setInstitution(inst);
+        }
+
+        if (departmentId != null) {
+            Department dept = departmentRepository.findById(departmentId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + departmentId));
+            target.setDepartment(dept);
+        }
+
+        userRepository.save(target);
+        logger.info("User {} (ID: {}) updated with role: {} by {}", target.getEmail(), target.getId(), newRole, caller.getUsername());
+    }
+
+    @Transactional
+    public void deactivateUser(Long targetUserId, UserPrincipal caller) {
+        User target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + targetUserId));
+
+        if (target.getRole() == Role.SYSTEM_ADMIN) {
+            if (userRepository.countByRoleAndActiveTrue(Role.SYSTEM_ADMIN) <= 1) {
+                throw new BadRequestException("The last active System Administrator cannot be deactivated.");
+            }
+        }
+
+        if (caller.getRole() != Role.SYSTEM_ADMIN) {
+            User callerUser = userRepository.findById(caller.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Caller user not found"));
+            if (caller.getRole() != Role.INSTITUTION_ADMIN || callerUser.getInstitution() == null ||
+                    target.getInstitution() == null || !callerUser.getInstitution().getId().equals(target.getInstitution().getId())) {
+                throw new UnauthorizedException("You do not have permission to deactivate this user.");
+            }
+            if (target.getRole() == Role.INSTITUTION_ADMIN || target.getRole() == Role.SYSTEM_ADMIN) {
+                throw new UnauthorizedException("Cannot deactivate an administrator.");
+            }
+        }
+
+        target.setActive(false);
+        userRepository.save(target);
+
+        // When a user is deactivated, their future bookings are cancelled with the reason "User deactivated"
+        List<Booking> futureBookings = bookingRepository.findByUserIdOrderByStartTimeDesc(target.getId());
+        LocalDateTime now = LocalDateTime.now();
+        for (Booking b : futureBookings) {
+            if (b.getStartTime().isAfter(now) &&
+                    (b.getStatus() == BookingStatus.PENDING_APPROVAL || b.getStatus() == BookingStatus.CONFIRMED)) {
+                b.setStatus(BookingStatus.CANCELLED);
+                b.setCancellationReason("User deactivated");
+                bookingRepository.save(b);
+            }
+        }
+        logger.info("User {} (ID: {}) deactivated by {}. Future bookings cancelled.", target.getEmail(), target.getId(), caller.getUsername());
     }
 }

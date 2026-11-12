@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.lab.platform.auth.User;
 import com.lab.platform.equipment.Equipment;
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -49,11 +50,30 @@ public class Booking {
 
     private String cancellationReason;
 
+    // Milestone 2 T4: Recurring series identifier
+    private String recurrenceId;
+
+    // Milestone 2 T5: Inter-Institution Sharing agreement reference & fees
+    private Long sharingAgreementId;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal estimatedFee;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     public Booking() {}
+
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+    }
 
     @PreUpdate
     public void preUpdate() {
@@ -146,6 +166,30 @@ public class Booking {
 
     public void setCancellationReason(String cancellationReason) {
         this.cancellationReason = cancellationReason;
+    }
+
+    public String getRecurrenceId() {
+        return recurrenceId;
+    }
+
+    public void setRecurrenceId(String recurrenceId) {
+        this.recurrenceId = recurrenceId;
+    }
+
+    public Long getSharingAgreementId() {
+        return sharingAgreementId;
+    }
+
+    public void setSharingAgreementId(Long sharingAgreementId) {
+        this.sharingAgreementId = sharingAgreementId;
+    }
+
+    public BigDecimal getEstimatedFee() {
+        return estimatedFee;
+    }
+
+    public void setEstimatedFee(BigDecimal estimatedFee) {
+        this.estimatedFee = estimatedFee;
     }
 
     public LocalDateTime getCreatedAt() {

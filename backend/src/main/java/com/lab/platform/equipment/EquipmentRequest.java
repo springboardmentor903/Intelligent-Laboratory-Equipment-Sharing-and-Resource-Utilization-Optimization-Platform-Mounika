@@ -10,6 +10,10 @@ public class EquipmentRequest {
     @NotBlank(message = "Equipment name is required")
     private String name;
 
+    private String assetTag;
+
+    private String manufacturer;
+
     private String modelNumber;
 
     private String serialNumber;
@@ -28,6 +32,14 @@ public class EquipmentRequest {
     private EquipmentStatus status = EquipmentStatus.AVAILABLE;
 
     private BigDecimal hourlyRate = BigDecimal.ZERO;
+
+    private LocalDate purchaseDate;
+
+    private BigDecimal purchaseCost;
+
+    private boolean requiresApproval = true;
+
+    private boolean requiresTraining = false;
 
     private boolean sharableInterInstitution = false;
 
@@ -53,6 +65,22 @@ public class EquipmentRequest {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getAssetTag() {
+        return assetTag;
+    }
+
+    public void setAssetTag(String assetTag) {
+        this.assetTag = assetTag;
+    }
+
+    public String getManufacturer() {
+        return manufacturer;
+    }
+
+    public void setManufacturer(String manufacturer) {
+        this.manufacturer = manufacturer;
     }
 
     public String getModelNumber() {
@@ -125,6 +153,38 @@ public class EquipmentRequest {
 
     public void setHourlyRate(BigDecimal hourlyRate) {
         this.hourlyRate = hourlyRate;
+    }
+
+    public LocalDate getPurchaseDate() {
+        return purchaseDate;
+    }
+
+    public void setPurchaseDate(LocalDate purchaseDate) {
+        this.purchaseDate = purchaseDate;
+    }
+
+    public BigDecimal getPurchaseCost() {
+        return purchaseCost;
+    }
+
+    public void setPurchaseCost(BigDecimal purchaseCost) {
+        this.purchaseCost = purchaseCost;
+    }
+
+    public boolean isRequiresApproval() {
+        return requiresApproval;
+    }
+
+    public void setRequiresApproval(boolean requiresApproval) {
+        this.requiresApproval = requiresApproval;
+    }
+
+    public boolean isRequiresTraining() {
+        return requiresTraining;
+    }
+
+    public void setRequiresTraining(boolean requiresTraining) {
+        this.requiresTraining = requiresTraining;
     }
 
     public boolean isSharableInterInstitution() {

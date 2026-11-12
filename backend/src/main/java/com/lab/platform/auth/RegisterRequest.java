@@ -24,6 +24,8 @@ public class RegisterRequest {
 
     private Long departmentId;
 
+    private Role role;
+
     public RegisterRequest() {}
 
     public RegisterRequest(String fullName, String email, String password, String phoneNumber, Long institutionId, Long departmentId) {
@@ -33,6 +35,11 @@ public class RegisterRequest {
         this.phoneNumber = phoneNumber;
         this.institutionId = institutionId;
         this.departmentId = departmentId;
+    }
+
+    public RegisterRequest(String fullName, String email, String password, String phoneNumber, Long institutionId, Long departmentId, Role role) {
+        this(fullName, email, password, phoneNumber, institutionId, departmentId);
+        this.role = role;
     }
 
     public String getFullName() {
@@ -81,5 +88,13 @@ public class RegisterRequest {
 
     public void setDepartmentId(Long departmentId) {
         this.departmentId = departmentId;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 }
