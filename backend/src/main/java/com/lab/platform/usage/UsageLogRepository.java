@@ -13,7 +13,9 @@ import java.util.Optional;
 @Repository
 public interface UsageLogRepository extends JpaRepository<UsageLog, Long> {
 
-    Optional<UsageLog> findByBookingId(Long bookingId);
+    List<UsageLog> findByBookingId(Long bookingId);
+
+    Optional<UsageLog> findFirstByBookingIdOrderByIdDesc(Long bookingId);
 
     List<UsageLog> findByEquipmentId(Long equipmentId);
 

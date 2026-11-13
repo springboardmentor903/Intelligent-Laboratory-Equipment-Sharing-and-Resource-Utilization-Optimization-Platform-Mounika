@@ -152,7 +152,7 @@ public class UsageService {
         Booking savedBooking = bookingRepository.save(booking);
 
         // 2. Close active UsageLog
-        UsageLog log = usageLogRepository.findByBookingId(bookingId)
+        UsageLog log = usageLogRepository.findFirstByBookingIdOrderByIdDesc(bookingId)
                 .orElse(null);
         if (log != null && log.getActualEndTime() == null) {
             log.setActualEndTime(now);
@@ -268,7 +268,7 @@ public class UsageService {
             booking.setStatus(BookingStatus.COMPLETED);
             bookingRepository.save(booking);
 
-            UsageLog log = usageLogRepository.findByBookingId(booking.getId()).orElse(null);
+            UsageLog log = usageLogRepository.findFirstByBookingIdOrderByIdDesc(booking.getId()).orElse(null);
             if (log != null && log.getActualEndTime() == null) {
                 log.setActualEndTime(booking.getEndTime());
                 usageLogRepository.save(log);
