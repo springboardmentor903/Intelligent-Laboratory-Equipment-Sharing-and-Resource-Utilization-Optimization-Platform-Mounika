@@ -21,7 +21,8 @@ import {
   Share2,
   ListOrdered,
   Menu,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -133,15 +134,27 @@ export default function Navbar() {
               )}
 
               {isAuthenticated && canManageSharing(user) && (
-                <Link
-                  to="/sharing-analytics"
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                    isActive('/sharing-analytics') ? 'bg-teal-50 text-teal-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <Share2 className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Partnerships</span>
-                </Link>
+                <>
+                  <Link
+                    to="/agreements"
+                    className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                      isActive('/agreements') ? 'bg-teal-50 text-teal-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Agreements</span>
+                  </Link>
+
+                  <Link
+                    to="/sharing-analytics"
+                    className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                      isActive('/sharing-analytics') ? 'bg-teal-50 text-teal-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Partnerships</span>
+                  </Link>
+                </>
               )}
             </div>
           </div>
@@ -263,13 +276,22 @@ export default function Navbar() {
               </Link>
             )}
             {isAuthenticated && canManageSharing(user) && (
-              <Link
-                to="/sharing-analytics"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Sharing & Partnerships
-              </Link>
+              <>
+                <Link
+                  to="/agreements"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Bilateral Agreements
+                </Link>
+                <Link
+                  to="/sharing-analytics"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Sharing & Partnerships
+                </Link>
+              </>
             )}
           </div>
         )}

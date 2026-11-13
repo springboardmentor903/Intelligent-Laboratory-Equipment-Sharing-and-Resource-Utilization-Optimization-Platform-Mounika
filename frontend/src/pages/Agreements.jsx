@@ -130,7 +130,9 @@ export default function Agreements() {
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden divide-y divide-slate-200">
           {agreements.map((agr) => {
-            const isCallerProvider = user?.department?.institution?.id === agr.providerInstitution?.id;
+            const userInstId = user?.institution?.id || user?.department?.institution?.id;
+            const isCallerProvider = userInstId && userInstId === agr.providerInstitution?.id;
+            const isCallerConsumer = userInstId && userInstId === agr.consumerInstitution?.id;
 
             return (
               <div key={agr.id} className="p-6 hover:bg-slate-50/50 transition flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -158,9 +160,9 @@ export default function Agreements() {
                       <span className="text-slate-400 block font-medium">Provider (Equipment Host):</span>
                       <span className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
                         <Building className="w-3.5 h-3.5 text-teal-600" />
-                        {agr.providerInstitution.name}
+                        {agr.providerInstitution?.name}
                         {isCallerProvider && (
-                          <span className="text-[10px] bg-teal-100 text-teal-800 px-1.5 py-0.2 rounded font-normal">Your Institution</span>
+                          <span className="text-[10px] bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded font-normal">Your Institution</span>
                         )}
                       </span>
                     </div>
@@ -169,9 +171,9 @@ export default function Agreements() {
                       <span className="text-slate-400 block font-medium">Consumer (Visiting Institution):</span>
                       <span className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
                         <Building className="w-3.5 h-3.5 text-indigo-600" />
-                        {agr.consumerInstitution.name}
-                        {!isCallerProvider && (
-                          <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded font-normal">Your Institution</span>
+                        {agr.consumerInstitution?.name}
+                        {isCallerConsumer && (
+                          <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-normal">Your Institution</span>
                         )}
                       </span>
                     </div>
